@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Saham & Crypto Dashboard
 
-## Getting Started
+Dashboard personal bergaya TradingView untuk memantau pasar **crypto** dan **saham Indonesia (IDX)** dalam satu tampilan.
 
-First, run the development server:
+## Gambaran Sistem
+
+Aplikasi ini menampilkan data market real-time-ish dari TradingView Scanner melalui API internal Next.js, lalu merender:
+
+- ringkasan market cap dan volume,
+- kartu harga aset + perubahan harian,
+- chart interaktif TradingView,
+- watchlist per mode (crypto/saham),
+- daftar top gainers/top losers,
+- simulator portfolio (manual input posisi dan hitung unrealized PnL).
+
+## Fitur Utama
+
+- Toggle mode `crypto` dan `saham`.
+- Auto refresh data setiap **10 detik** (React Query).
+- Search simbol/nama aset.
+- Watchlist tersimpan di `localStorage`.
+- Toggle tema `dark/light` (state + `localStorage`).
+- Portfolio simulator dengan perhitungan:
+  - total invested,
+  - current value,
+  - unrealized PnL dan PnL%.
+
+## Arsitektur Singkat
+
+- Frontend: Next.js App Router (Client Component di `src/app/page.tsx`).
+- Data layer: `@tanstack/react-query`.
+- UI: Tailwind CSS v4 + komponen `src/components/ui/*` (shadcn-style).
+- Server route: `src/app/api/tradingview/route.ts` sebagai proxy/fetcher ke TradingView Scanner.
+
+Alur data:
+
+1. Client memanggil `GET /api/tradingview?mode=crypto|saham`.
+2. Route handler melakukan `POST` ke endpoint scanner TradingView sesuai mode.
+3. Response dipetakan ke format aset yang dipakai UI.
+4. Client update tampilan + auto refetch 10 detik.
+
+## Struktur Proyek
+
+```text
+src/
+  app/
+    api/tradingview/route.ts   # API route untuk data scanner TradingView
+    layout.tsx                 # Metadata dan root layout
+    page.tsx                   # Dashboard utama
+    globals.css                # Tema dan token style global
+  components/ui/               # Komponen UI reusable
+  lib/                         # Helper/utilitas shared
+public/                        # Aset statis
+```
+
+## API Internal
+
+### `GET /api/tradingview?mode=crypto|saham`
+
+Parameter:
+
+- `mode` (opsional): `crypto` (default) atau `saham`.
+
+Response sukses:
+
+```json
+{
+  "data": [
+    {
+      "symbol": "BTC",
+      "tvSymbol": "BINANCE:BTCUSDT",
+      "name": "Bitcoin",
+      "price": 1450000000,
+      "change24h": 1.9,
+      "volume": 1950000000000,
+      "marketCap": 28500000000000
+    }
+  ]
+}
+```
+
+Response error:
+
+- `502` jika request ke TradingView scanner gagal.
+- `500` jika terjadi error saat proses fetch/parsing.
+
+## Menjalankan Proyek
+
+Prasyarat:
+
+- Node.js 18+ (disarankan versi LTS terbaru).
+
+Install dependency:
+
+```bash
+npm install
+```
+
+Menjalankan development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Akses di browser:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quality Gate
 
-## Learn More
+Sebelum merge/deploy, jalankan:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Catatan Teknis
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Tidak ada database; state watchlist/tema disimpan lokal di browser.
+- API route menggunakan `cache: "no-store"` untuk data lebih segar.
+- Jika API gagal, UI menampilkan fallback error card.
